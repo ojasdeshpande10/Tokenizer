@@ -1,6 +1,9 @@
 from posixpath import sep
 from collections import defaultdict
 import re
+import string
+
+merge_list = []
 
 def spacebreaker(line):
   words = re.split(r'\s+|\n', line)
@@ -64,14 +67,13 @@ def makeCorpus(lines):
   for line in lines:
     words_in_line = line.split()
     for word in words_in_line:
-      new_word = ' '.join(word)
-      print
-      corpus[new_word+' _']+=1
+      new_word = ' '.join(word)+' <w>'
+      corpus[new_word]+=1
   return corpus
 
 
 def replaceMaxinCorpus(corpus,best_pair):
-  new_corpus = {}
+  new_corpus = defaultdict(int)
   best_pair_sep = ' '.join(best_pair)
   best_pair_join = ''.join(best_pair)
   for key in corpus:
@@ -92,38 +94,86 @@ def findMaxPairs(corpus):
 def createInitialVocab(lines):
   vocab = defaultdict(int)
   for line in lines:
-    new_line = re.sub(r'[^\x00-\x7F]', '?', line)
+    new_line = re.sub(r'[^a-zA-Z]', '?', line)
     for char in new_line:
-      vocab[char]+=1
+      if char in vocab:
+        vocab[char]=1
+      else:
+        vocab[char]=1
   return vocab
 
 
-def spacelessBPELearn(lines):
-  vocab = createInitialVocab(lines)
-  print(list(vocab.keys()))
-  max_iter = 1000-len(vocab)
+def spacelessBPELearn(lines,max_vocab):
+  vocab = []
+  vocab = list(string.digits + string.ascii_letters + string.punctuation)
+  vocab.append('<w>')
+  # print("length of vocab:", len(vocab))
+  max_iter = max_vocab-len(vocab)
   corpus = makeCorpus(lines)
+  print("******Printing top 5 most frequent pairs at 0 1 10 100 500 iteration*********")
   for i in range(max_iter):
     dict_of_pairs = findMaxPairs(corpus)
     #print(list(dict_of_pairs.keys()))
     best_pair = max(dict_of_pairs, key=lambda k: dict_of_pairs[k])
-    vocab[''.join(best_pair)]=1
-    if (i==0 or i==1 or i==10 or i==100 or i == 500):
-      print(''.join(best_pair))
+    vocab.append(''.join(best_pair))
+    merge_list.append((best_pair))
+    if ((i==0 or i==1 or i==10 or i==100 or i==500)):
+      top_5 = sorted(dict_of_pairs.items(), key=lambda item: item[1], reverse=True)[:5]
+      print("At iteration: ", i)
+      for key in top_5:
+        print(key[0])
     corpus=replaceMaxinCorpus(corpus,best_pair)
     # if i==1:
     #   break
-  #print(vocab)
+  print(len(vocab))
+  return merge_list
 
+def spacelessBPEtokenize(text,vocab):
+  tokens = []
+  words = text.split()
+  for word in words:
+    i=0
+    new_word = ' '.join(word)+' <w>'
+    for pair in vocab:
+      seperated_pair = ' '.join(pair)
+      joint_pair = ''.join(pair)
+      new_word = new_word.replace(seperated_pair,joint_pair)
+    word_tokens = new_word.split()
+    tokens.extend(word_tokens)
+  return tokens
 
-
-with open('a1_tweets.txt', 'r') as file:
-  lines = file.read().splitlines()
-i=0
-spacelessBPELearn(lines)
-# txt = "#pokemon-hash"
-# print(wordTokenizer(txt))
-# words = wordTokenizer(txt)
-# for line in lines:
-#   print(line)
-#   words = wordTokenizer(txt)
+def tokenized(lines,type):
+  tokens_dict={}
+  tokens = []
+  vocab = {}
+  if type == "bpe":
+    print("Checkpoint 1.2")
+    vocab = spacelessBPELearn(lines,1000)
+    
+    print("**********The final vocabulary is*******")
+    print(vocab)
+    i=0
+    print("******Tokens of first 5 documents*********")
+    for line in lines:
+      #print(line)
+      bP_tokens = spacelessBPEtokenize(line,vocab)
+      #tokens_dict.update(bP_tokens)
+      #print(bP_tokens)
+      tokens.append(bP_tokens)
+      if i<5 or i==1326:
+        print(line)
+        print(bP_tokens)
+      i+=1
+  else:
+    i=0
+    print("Checkpoint 1.1")
+    print("Tokens of first five documents and last document")
+    for line in lines:
+      words = wordTokenizer(line)
+      if i<5 or i==1326:
+        print(line)
+        print(words)
+      tokens.append(words)
+      i+=1
+  print(len(tokens))
+  return tokens,merge_list
