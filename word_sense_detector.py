@@ -1,9 +1,9 @@
 
 import csv
-from a1_p1_deshpande_115837247 import tokenized
-from a1_p1_deshpande_115837247 import spacelessBPEtokenize
-from a1_p1_deshpande_115837247 import spacelessBPELearn
-from a1_p1_deshpande_115837247 import wordTokenizer
+from tokenizer import tokenized
+from tokenizer import spacelessBPEtokenize
+from tokenizer import spacelessBPELearn
+from tokenizer import wordTokenizer
 import torch.nn as nn
 from logistic import LogisticRegressionModel
 import torch.optim as optim
